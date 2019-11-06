@@ -27,8 +27,8 @@ class Server:
         string_data = data.decode('ascii')
         string_data_array = string_data.split('\r\n')
         if self.is_handshake(string_data_array):
-            print("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + self.sec_websocket_accept(string_data_array))
-            conn.sendall("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + self.sec_websocket_accept(string_data_array))
+            send_string = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + self.sec_websocket_accept(string_data_array).decode('ascii') + "\r\n\r\n"
+            conn.sendall(send_string.encode())
         while True:
             data = conn.recv(1024)
             print(data)
@@ -41,7 +41,7 @@ class Server:
 
     def sec_websocket_accept(self, string_data_array):
         websocket_key = string_data_array[4].split(' ')[1]
-        return base64.b64encode(hashlib.sha1((websocket_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()))
+        return base64.b64encode(hashlib.sha1((websocket_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest())
 
 if __name__ == "__main__":
     r = Server()
