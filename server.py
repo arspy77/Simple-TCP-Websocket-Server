@@ -12,7 +12,7 @@ class Server:
         while True:
             conn, addr = self._socket.accept()
             print("connected by", addr)
-            thread = threading.Thread(target=self.run_thread, args=[conn])
+            thread = threading.Thread(target=self._run_thread, args=[conn])
             thread.start()
             # serve connection
             # Implement this
@@ -22,24 +22,50 @@ class Server:
     def __del__(self):
         self._socket.close()
 
-    def run_thread(self, conn):
+    def _run_thread(self, conn):
         data = conn.recv(1024)
-        string_data = data.decode('ascii')
-        string_data_array = string_data.split('\r\n')
-        if self.is_handshake(string_data_array):
-            send_string = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + self.sec_websocket_accept(string_data_array).decode('ascii') + "\r\n\r\n"
-            conn.sendall(send_string.encode())
+        print(data)
+        succ, ans = self._reply_handshake(data)
+        if succ:
+            conn.sendall(ans)
+        else:
+            return
         while True:
-            data = conn.recv(1024)
+            data = conn.recv(18446744073709551615) #Theoretical Maximum
+            succ, ans = self._reply(data)
+            if succ:
+                conn.sendall(ans)
+            else:
+                return
             print(data)
             if not data:
                 break
             conn.sendall(data)  
 
-    def is_handshake(self, string_data_array):
-        return string_data_array[2] == "Upgrade: websocket" and string_data_array[3] == "Connection: Upgrade" and string_data_array[5] == "Sec-WebSocket-Version: 13"
+    def _reply_handshake(self, data):
+        string_data = data.decode('ascii')
+        string_data_array = string_data.split('\r\n')
+        if self._is_handshake(string_data_array):
+            send_string = 
+                "HTTP/1.1 101 Switching Protocols\r\n"\
+                + "Upgrade: websocket\r\n" \
+                + "Connection: Upgrade\r\n" \ 
+                + "Sec-WebSocket-Accept: " \
+                + self._sec_websocket_accept(string_data_array).decode('ascii') \
+                + "\r\n\r\n"
+            print(send_string.encode())
+            return True, send_string.encode()
+        return False, None
 
-    def sec_websocket_accept(self, string_data_array):
+    def _reply_payload(self, data):
+        pass
+
+
+    def _is_handshake(self, string_data_array):
+        return string_data_array[2] == "Upgrade: websocket" \
+            and string_data_array[3] == "Connection: Upgrade"
+
+    def _sec_websocket_accept(self, string_data_array):
         websocket_key = string_data_array[4].split(' ')[1]
         return base64.b64encode(hashlib.sha1((websocket_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest())
 
