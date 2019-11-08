@@ -115,9 +115,9 @@ class Server:
                 file_to_send.close()
             elif len(data) >= 7 and data[0:7] == '!check '.encode():
                 if data[7:] == '1234567890'.encode(): # GANTI NANTI COKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
-                    self._send(1, b'\x01', conn)
+                    self._send(1, bytes([ord('1')]), conn)
                 else:
-                    self._send(1, b'\x00', conn)
+                    self._send(1, bytes([ord('0')]), conn)
             else:
                 return False
         elif op_code == 8:

@@ -22,5 +22,11 @@ async def hello():
         greeting = await websocket.recv()
         print(f"< {greeting}")
 
+        await websocket.send("!check 12334567890")
+        # print(f"> {name}")
+
+        greeting = await websocket.recv()
+        print(f"< {greeting}")
+
 asyncio.get_event_loop().run_until_complete(hello())
 
