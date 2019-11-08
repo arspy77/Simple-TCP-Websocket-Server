@@ -8,10 +8,16 @@ import websockets
 async def hello():
     uri = "ws://localhost:12000"
     async with websockets.connect(uri) as websocket:
-        name = input("What's your name? ")
+        # name = input("What's your name? ")
 
-        await websocket.send(name)
-        print(f"> {name}")
+        await websocket.send("!echo hithere")
+        # print(f"> {name}")
+
+        greeting = await websocket.recv()
+        print(f"< {greeting}")
+
+        await websocket.send("!check 1234567890")
+        # print(f"> {name}")
 
         greeting = await websocket.recv()
         print(f"< {greeting}")

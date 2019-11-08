@@ -35,7 +35,7 @@ class Server:
             if not succ:
                 return 
             print(data)
-            succ = self._reply_payload(succ, data)
+            succ = self._reply_payload(succ, data, conn)
             if not succ:
                 return
 
@@ -105,56 +105,73 @@ class Server:
 
         return op_code, ans
 
-    def _reply_payload(self, op_code, data):
+    def _reply_payload(self, op_code, data, conn):
         if op_code == 1:
             if len(data) >= 6 and data[0:6] == '!echo '.encode():
-                self._send(1, data[6:])
+                self._send(1, data[6:], conn)
             elif len(data) == 11 and data == '!submission'.encode():
                 file_to_send = open('README.md', r) # GANTI NANTI COKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
-                self._send(2, file_to_send.read())
+                self._send(2, file_to_send.read(), conn)
                 file_to_send.close()
             elif len(data) >= 7 and data[0:7] == '!check '.encode():
                 if data[7:] == '1234567890'.encode(): # GANTI NANTI COKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
-                    self._send(1, b'\x01')
+                    self._send(1, b'\x01', conn)
                 else:
-                    self._send(1, b'\x00')
+                    self._send(1, b'\x00', conn)
             else:
                 return False
         elif op_code == 8:
-            self._send(8, data)
+            self._send(8, data, conn)
             return False
         elif op_code == 9:
             ans_data = data
-            self._send(10, data)
+            self._send(10, data, conn)
         else:
             return False
         return True
 
-    def _send(self, op_code, data):
-        send_data = b''
-        send_data.append(bytes([128]))
-        send_data.append(bytes([op_code]))
-        if (len(data) < 126):
-            send_data.appen65536d(bytes([len(data)]))
-            data.append(bytes[126])
-            
-            send_data.append(bytes([126]))
-            send_data.append(bytes([len(data) % 2**8]))
-            data.append(bytes([len(data) << 8]))
-\
-            data.append(bytes([len(data) << 8]))
-        '''
-        else:
-            data.append(bytes([127]))
-            
-            data.append(bytes([len(data) % 2**56]))
-            data.append(bytes([(len(data) << 8) % 2**48]))
-            data.append(bytes([(len(data) << 16) % 2**40]))
-            data.append(bytes([(len(data) << 24) % 2**32]))
-            data.append(bytes([(len(data) << 32) % 2**24]))
-            data.append(bytes([(len(data) << 40) % 2**16]))
-            data.append(bytes([(len(data) << 48) % 2**8]))
-            data.append(bytes([(len(data) << 56)]))
+    def _send(self, op_code, data, conn):
+        is_first = True
+        print(data)
+        while len(data) > 0: 
+            send_data = b''
+            if (len(data) <= 32768):
+                if is_first:
+                    send_data += (bytes([128 + op_code]))
+                    is_first = False
+                else:
+                    send_data += (bytes([128]))
+            else:
+                if is_first:
+                    send_data += (bytes([op_code]))
+                    is_first = False
+                else:
+                    send_data += (bytes([0]))
+            packet_length = min(32768, len(data))
+            if (packet_length < 126):
+                send_data += (bytes([packet_length]))
+            else:    
+                send_data += (bytes([126]))
+                send_data += (bytes([packet_length % 2**8]))
+                send_data += (bytes([packet_length << 8]))
+            packet_data = data[:packet_length]
+            send_data += (packet_data) 
+            print(send_data)
+            conn.sendall(send_data)
+            data = data[packet_length:]
             '''
-        
-        data.append(data) data = data[255:]
+            else:
+                data.append(bytes([127]))
+                
+                data.append(bytes([len(data) % 2**56]))
+                data.append(bytes([(len(data) << 8) % 2**48]))
+                data.append(bytes([(len(data) << 16) % 2**40]))
+                data.append(bytes([(len(data) << 24) % 2**32]))
+                data.append(bytes([(len(data) << 32) % 2**24]))
+                data.append(bytes([(len(data) << 40) % 2**16]))
+                data.append(bytes([(len(data) << 48) % 2**8]))
+                data.append(bytes([(len(data) << 56)]))
+                '''
+
+
+server = Server()
