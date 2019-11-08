@@ -3,15 +3,19 @@
 ## Nama Kelompok 
     KomiCantNetwork
 
-## petunjuk penggunaan program 
-langkah-langkah:
-1. untuk menjalankan server ketik '''python server.py''' pada commandline
-2. untuk menjalankan client ketik '''python client.py''' pada commandline 
+## Petunjuk Penggunaan Program 
+1. Untuk menjalankan server pada localhost ketik '''python server.py''' pada commandline
+2. Gunakan '''ngrok http 12000''' untuk dapat membuat endpoint websocket menjadi public
+3. CLient yang akan dijalankan harus menggunakan websocket dan URL websocket nya adalah yang diberi oleh ngrok (misal di ngrok http://e156f178.ngrok.io, maka URL websocketnya adalah ws://e156f178.ngrok.io)
+4. Ada 3 perintah yang bisa dikirimkan client:
+    a. '''!echo <string>''' untuk mengirimkan string kembali ke client 
+    b.'''!submission''' untuk mengirimkan file server.py dan README.md yang sudah di zip menjadi 1 file
+    c.'''!check <md5>''' untuk mengecek md5 dari file yang terkirim apakah sama dengan md5 file pada server
 
-pembagian tugas :
+## Pembagian Tugas
 
 |Nim     |Nama                       |Pembagian kerja|Persentase|
 |--------|---------------------------|---------------|----------|
-|13517004|Bimo Adityarahman Wiraputra| UWU           |33.5 %    |
-|13517040|Ariel Ansa Razumardi       | OWO           |33.5 %    |
-|13517058|Ahmad Rizqee Nurhani       | UMU           |33 %      |
+|13517004|Bimo Adityarahman Wiraputra| server.py     |33.33 %   |
+|13517040|Ariel Ansa Razumardi       | server.py     |33.33 %   |
+|13517058|Ahmad Rizqee Nurhani       | server.py     |33.33 %   |

@@ -76,6 +76,9 @@ class Server:
             if is_first:
                 op_code = data[0] & 0x0F
             is_first = False
+            if (op_code == 9):
+                data = conn.recv(2)
+                return op_code, conn.recv(1024)
             is_mask = data[1] >> 7
             payload_length = data[1] & 0x7F 
             if payload_length == 126:
@@ -110,21 +113,24 @@ class Server:
             if len(data) >= 6 and data[0:6] == '!echo '.encode():
                 self._send(1, data[6:], conn)
             elif len(data) == 11 and data == '!submission'.encode():
-                file_to_send = open('README.md', r) # GANTI NANTI COKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
+                file_to_send = open('Jarkom2_KomiCantNetwork.zip', "rb") 
                 self._send(2, file_to_send.read(), conn)
                 file_to_send.close()
             elif len(data) >= 7 and data[0:7] == '!check '.encode():
-                if data[7:] == '1234567890'.encode(): # GANTI NANTI COKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
+                file_to_send = open('Jarkom2_KomiCantNetwork.zip', "rb") 
+                if data[7:].decode('ascii').lower() == hashlib.md5(file_to_send.read()).hexdigest().lower(): 
                     self._send(1, bytes([ord('1')]), conn)
                 else:
                     self._send(1, bytes([ord('0')]), conn)
+                file_to_send.close()
             else:
                 return False
         elif op_code == 8:
+            print("close control frame received")
             self._send(8, data, conn)
             return False
         elif op_code == 9:
-            ans_data = data
+            print("ping received")
             self._send(10, data, conn)
         else:
             return False
@@ -153,25 +159,12 @@ class Server:
             else:    
                 send_data += (bytes([126]))
                 send_data += (bytes([packet_length % 2**8]))
-                send_data += (bytes([packet_length << 8]))
+                send_data += (bytes([((packet_length << 8) % 2**8)]))
             packet_data = data[:packet_length]
             send_data += (packet_data) 
             print(send_data)
             conn.sendall(send_data)
             data = data[packet_length:]
-            '''
-            else:
-                data.append(bytes([127]))
-                
-                data.append(bytes([len(data) % 2**56]))
-                data.append(bytes([(len(data) << 8) % 2**48]))
-                data.append(bytes([(len(data) << 16) % 2**40]))
-                data.append(bytes([(len(data) << 24) % 2**32]))
-                data.append(bytes([(len(data) << 32) % 2**24]))
-                data.append(bytes([(len(data) << 40) % 2**16]))
-                data.append(bytes([(len(data) << 48) % 2**8]))
-                data.append(bytes([(len(data) << 56)]))
-                '''
 
 
 server = Server()
