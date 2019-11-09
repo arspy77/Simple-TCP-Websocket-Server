@@ -9,8 +9,8 @@
 3. Client yang akan dijalankan harus menggunakan websocket dan URL websocket nya adalah yang diberi oleh ngrok (misal di ngrok http://e156f178.ngrok.io, maka URL websocketnya adalah ws://e156f178.ngrok.io)
 4. Ada 3 perintah yang bisa dikirimkan client:
     a. '''!echo <string>''' untuk mengirimkan string kembali ke client 
-    b.'''!submission''' untuk mengirimkan file server.py dan README.md yang sudah di zip menjadi 1 file
-    c.'''!check <md5>''' untuk mengecek md5 dari file yang terkirim apakah sama dengan md5 file pada server
+    b.'''!submission''' untuk mengirimkan file server.py dan README.md yang sudah di zip menjadi 1 file bernama "Jarkom2_KomiCantNetwork.zip"
+    c.Kirim lagi file yang diterima untuk mengecek md5 dari file yang terkirim apakah sama dengan md5 file pada server
 
 ## Pembagian Tugas
 

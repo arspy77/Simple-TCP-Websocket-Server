@@ -2,11 +2,12 @@ import socket
 import threading   
 import hashlib 
 import base64
+import time
 
 class Server:
     def __init__(self):
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.bind(('', 12000)) # automatically find open port to connect to
+        self._socket.bind(('', 12000))
         self._socket.listen()
         print("receiver active on", socket.gethostbyname(socket.gethostname()), "port", self._socket.getsockname()[1])
         i = 1
@@ -29,9 +30,10 @@ class Server:
         conn.sendall(ans)
         print("handshake succeeded on thread ", n)
         while True:
-            succ, data = self._receive_payload(conn)
+            succ, data = self._receive_payload(conn, n)
             if not succ:
-                print("connection closed not normally on thread ", n)
+                self._send_close(conn, n)
+                print("connection closed not normally/in between data frame on thread ", n)
                 conn.close()
                 return 
             succ = self._reply_payload(succ, data, conn, n)
@@ -67,40 +69,51 @@ class Server:
                 websocket_key = string_data_array[i].split(' ')[1]
         return base64.b64encode(hashlib.sha1((websocket_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest())
 
-    def _receive_payload(self, conn):
+    def _receive_payload(self, conn, n):
         ans = b''
         is_first = True
         while True:
-            # 4294967295
             data = conn.recv(2)
             if len(data) < 2:
+                print("error data length < 2 on thread ", n)
                 return 0, None
             is_fin = data[0] >> 7
             if is_first:
                 op_code = data[0] & 0x0F
-            is_first = False
-            if (op_code == 9):
-                data = conn.recv(2)
-                return op_code, conn.recv(1024)
+            new_op_code = data[0] & 0x0F 
             is_mask = data[1] >> 7
-            payload_length = data[1] & 0x7F 
+            payload_length = data[1] & 0x7F
+            if (not(is_first)) and (new_op_code != 0):
+                if new_op_code == 8 or new_op_code == 9 or new_op_code == 10:
+                    print("control frame in between data frames on thread ", n)
+                    not_closed = self._receive_payload_control(conn, op_code, mask, payload_length, n)
+                    if not(not_closed):
+                        return 0, None
+                else:
+                    print("unknown control frame on thread ", n)
+                continue
+            is_first = False
             if payload_length == 126:
                 data = conn.recv(2)
                 if len(data) < 2:
+                    print("error data length < 4 on thread ", n)
                     return 0, None
                 payload_length = int.from_bytes(data, 'big')
             elif payload_length == 127:
                 data = conn.recv(8)
                 if len(data) < 8:
+                    print("error data length < 10 on thread ", n)
                     return 0, None
                 payload_length = int.from_bytes(data, 'big')
             if is_mask != 0:
                 mask = conn.recv(4)
                 if len(mask) < 4:
+                    print("error mask length < 4 on thread ", n)
                     return 0, None
             for i in range(payload_length):
                 data = conn.recv(1)
                 if len(data) < 1:
+                    print("error payload length not correct on thread ", n)
                     return 0, None
                 if is_mask:
                     ans += bytes([data[0] ^ mask[i % 4]])
@@ -111,8 +124,34 @@ class Server:
 
         return op_code, ans
 
+    def _receive_payload_control(self, conn, op_code, mask, payload_length, n):
+        if payload_length == 126:
+            data = conn.recv(2)
+            if len(data) < 2:
+                print("error data length < 4")
+            payload_length = int.from_bytes(data, 'big')
+        elif payload_length == 127:
+            data = conn.recv(8)
+            if len(data) < 8:
+                print("error data length < 10")
+            payload_length = int.from_bytes(data, 'big')
+        if is_mask != 0:
+            mask = conn.recv(4)
+            if len(mask) < 4:
+                print("error mask length < 4")
+        for i in range(payload_length):
+            data = conn.recv(1)
+            if len(data) < 1:
+                print("error payload length not correct")
+            if is_mask:
+                ans += bytes([data[0] ^ mask[i % 4]])
+            else:
+                ans += data[0]
+        return self._reply_payload(op_code, ans, conn, n)
+
     def _reply_payload(self, op_code, data, conn, n):
         global zip_contents
+        global md5_hash
         if op_code == 1:
             if len(data) >= 6 and data[0:6] == '!echo '.encode():
                 print(data.decode('ascii'), "on thread ", n)
@@ -124,7 +163,7 @@ class Server:
                 print("unknown text payload on thread", n)
         elif op_code == 2:
             print("binary payload on thread", n)
-            if hashlib.md5(data).hexdigest().lower() == hashlib.md5(zip_contents).hexdigest().lower(): 
+            if hashlib.md5(data).hexdigest().lower() == md5_hash: 
                 print("md5 checksum succeeded on thread ", n)
                 self._send(1, bytes([ord('1')]).decode('ascii').encode('utf-8'), conn)
             else:
@@ -137,6 +176,8 @@ class Server:
         elif op_code == 9:
             print("ping received on thread ", n)
             self._send(10, data, conn)
+        elif op_code == 10:
+            print("pong received on thread ", n)
         else:
             print("unknown frame on thread ", n)
         return True
@@ -168,11 +209,17 @@ class Server:
             send_data += (packet_data) 
             conn.sendall(send_data)
             data = data[packet_length:]
+    
+    def _send_close(self, conn, n):
+        print("close control frame sent on thread ", n)
+        self._send(8, bytes([ord('1')]), conn)
 
 
 if __name__ == '__main__':
     global zip_contents
+    global md5_hash
     file_to_send = open('Jarkom2_KomiCantNetwork.zip', "rb") 
     zip_contents = file_to_send.read()
     file_to_send.close()
+    md5_hash =  hashlib.md5(zip_contents).hexdigest().lower()
     server = Server()
