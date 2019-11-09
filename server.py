@@ -6,9 +6,8 @@ import base64
 class Server:
     def __init__(self):
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.bind(('', 12000))
+        self._socket.bind(('localhost', 12000))
         self._socket.listen()
-        print("receiver active on", socket.gethostbyname(socket.gethostname()), "port", self._socket.getsockname()[1])
         i = 1
         while True:
             conn, addr = self._socket.accept()
@@ -32,7 +31,7 @@ class Server:
             succ, data = self._receive_payload(conn, n)
             if not succ:
                 self._send_close(conn, n)
-                print("connection closed not normally/in between data frame on thread ", n)
+                print("connection closed not normally on thread ", n)
                 conn.close()
                 return 
             succ = self._reply_payload(succ, data, conn, n)
@@ -71,7 +70,8 @@ class Server:
         ans = b''
         is_first = True
         while True:
-            data = conn.recv(2)
+            diff = 0
+            data = conn.recv(65536)
             if len(data) < 2:
                 print("error data length < 2 on thread ", n)
                 return 0, None
@@ -84,7 +84,7 @@ class Server:
             if (not(is_first)) and (new_op_code != 0):
                 if new_op_code == 8 or new_op_code == 9 or new_op_code == 10:
                     print("control frame in between data frames on thread ", n)
-                    not_closed = self._receive_payload_control(conn, op_code, mask, payload_length, n)
+                    not_closed = self._receive_payload_control(conn, op_code, is_mask, payload_length, n, data, diff)
                     if not(not_closed):
                         return 0, None
                 else:
@@ -92,58 +92,46 @@ class Server:
                 continue
             is_first = False
             if payload_length == 126:
-                data = conn.recv(2)
-                if len(data) < 2:
+                if len(data) < 4:
                     print("error data length < 4 on thread ", n)
                     return 0, None
-                payload_length = int.from_bytes(data, 'big')
+                payload_length = int.from_bytes(data[2:4], 'big')
+                diff += 2
             elif payload_length == 127:
-                data = conn.recv(8)
-                if len(data) < 8:
+                if len(data) < 10:
                     print("error data length < 10 on thread ", n)
                     return 0, None
-                payload_length = int.from_bytes(data, 'big')
+                payload_length = int.from_bytes(data[2:10], 'big')
+                diff += 8
             if is_mask != 0:
-                mask = conn.recv(4)
+                mask = data[2+diff:6+diff]
                 if len(mask) < 4:
                     print("error mask length < 4 on thread ", n)
                     return 0, None
-            for i in range(payload_length):
-                data = conn.recv(1)
-                if len(data) < 1:
-                    print("error payload length not correct on thread ", n)
-                    return 0, None
+                diff += 4
+            for i in range(2+diff, len(data)):
                 if is_mask:
-                    ans += bytes([data[0] ^ mask[i % 4]])
+                    ans += bytes([data[i] ^ mask[(i-2-diff) % 4]])
                 else:
-                    ans += data[0]
+                    ans += data[i]
             if is_fin:
                 break
         return op_code, ans
 
-    def _receive_payload_control(self, conn, op_code, mask, payload_length, n):
+    def _receive_payload_control(self, conn, op_code, is_mask, payload_length, n, data, diff):
         if payload_length == 126:
-            data = conn.recv(2)
-            if len(data) < 2:
-                print("error data length < 4")
-            payload_length = int.from_bytes(data, 'big')
+            payload_length = int.from_bytes(data[2:4], 'big')
+            diff += 2
         elif payload_length == 127:
-            data = conn.recv(8)
-            if len(data) < 8:
-                print("error data length < 10")
-            payload_length = int.from_bytes(data, 'big')
+            payload_length = int.from_bytes(data[2:10], 'big')
+            diff += 8
         if is_mask != 0:
-            mask = conn.recv(4)
-            if len(mask) < 4:
-                print("error mask length < 4")
-        for i in range(payload_length):
-            data = conn.recv(1)
-            if len(data) < 1:
-                print("error payload length not correct")
+            mask = data[2+diff:6+diff]
+        for i in range(2+diff, payload_length+2+diff):
             if is_mask:
-                ans += bytes([data[0] ^ mask[i % 4]])
+                ans += bytes([data[i] ^ mask[(i-2-diff) % 4]])
             else:
-                ans += data[0]
+                ans += data[i]
         return self._reply_payload(op_code, ans, conn, n)
 
     def _reply_payload(self, op_code, data, conn, n):
@@ -209,7 +197,7 @@ class Server:
     
     def _send_close(self, conn, n):
         print("close control frame sent on thread ", n)
-        self._send(8, bytes([ord('1')]), conn)
+        self._send(8, bytes([ord('0')]), conn)
 
 global zip_contents
 global md5_hash

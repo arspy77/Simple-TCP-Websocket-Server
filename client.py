@@ -33,7 +33,7 @@ async def hello():
         time.sleep(5)
         print(f"< {pong_waiter}")
         
-        await websocket.send(greeting[5:])
+        await websocket.send(greeting)
         # print(f"> {name}")
 
         greeting = await websocket.recv()
