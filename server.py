@@ -57,11 +57,14 @@ class Server:
         return False, None
 
     def _is_handshake(self, string_data_array):
-        return string_data_array[2] == "Upgrade: websocket" \
-            and string_data_array[3] == "Connection: Upgrade"
+        return "Upgrade: websocket" in string_data_array \
+        and "Connection: Upgrade" in string_data_array
 
     def _sec_websocket_accept(self, string_data_array):
-        websocket_key = string_data_array[4].split(' ')[1]
+        websocket_key = ''
+        for i in range(len(string_data_array)):
+            if string_data_array[i].split(' ')[0] == "Sec-WebSocket-Key:":
+                websocket_key = string_data_array[i].split(' ')[1]
         return base64.b64encode(hashlib.sha1((websocket_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest())
 
     def _receive_payload(self, conn):
