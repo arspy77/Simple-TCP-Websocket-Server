@@ -9,35 +9,34 @@ class Server:
         self._socket.bind(('', 12000)) # automatically find open port to connect to
         self._socket.listen()
         print("receiver active on", socket.gethostbyname(socket.gethostname()), "port", self._socket.getsockname()[1])
+        i = 1
         while True:
             conn, addr = self._socket.accept()
-            print("connected by", addr)
-            thread = threading.Thread(target=self._run_thread, args=[conn])
+            print("connected by", addr, " on thread ", i)
+            thread = threading.Thread(target=self._run_thread, args=[conn, i])
             thread.start()
-            # serve connection
-            # Implement this
-            
-            # Single thread placeholder to echo raw bytes
+            i += 1
  
     def __del__(self):
         self._socket.close()
 
-    def _run_thread(self, conn):
+    def _run_thread(self, conn, n):
         data = conn.recv(1024)
-        print(data)
         succ, ans = self._reply_handshake(data)
-        print(ans)
         if not succ:
+            print("handshake failed on thread ", n)
             return
         conn.sendall(ans)
+        print("handshake succeeded on thread ", n)
         while True:
             succ, data = self._receive_payload(conn)
             if not succ:
+                print("connection closed on thread ", n)
                 conn.close()
                 return 
-            print(data)
-            succ = self._reply_payload(succ, data, conn)
+            succ = self._reply_payload(succ, data, conn, n)
             if not succ:
+                print("connection closed on thread ", n)
                 conn.close()
                 return
 
@@ -54,7 +53,6 @@ class Server:
                 + self._sec_websocket_accept(string_data_array).decode('ascii') \
                 + "\r\n\r\n"
             x = send_string.encode()
-            print(x)
             return True, x
         return False, None
 
@@ -113,29 +111,34 @@ class Server:
 
         return op_code, ans
 
-    def _reply_payload(self, op_code, data, conn):
+    def _reply_payload(self, op_code, data, conn, n):
         if op_code == 1:
             if len(data) >= 6 and data[0:6] == '!echo '.encode():
+                print(data.decode('ascii'), "on thread ", n)
                 self._send(1, data[6:].decode('ascii').encode('utf-8'), conn)
             elif len(data) == 11 and data == '!submission'.encode():
+                print('submission on thread ', n)
                 file_to_send = open('Jarkom2_KomiCantNetwork.zip', "rb") 
                 self._send(2, file_to_send.read(), conn)
                 file_to_send.close()
             elif len(data) >= 7 and data[0:7] == '!check '.encode():
+                print(data.decode('ascii'), "on thread ", n)
                 file_to_send = open('Jarkom2_KomiCantNetwork.zip', "rb") 
                 if data[7:].decode('ascii').lower() == hashlib.md5(file_to_send.read()).hexdigest().lower(): 
+                    print("checksum succeeded on thread ", n)
                     self._send(1, bytes([ord('1')]).decode('ascii').encode('utf-8'), conn)
                 else:
+                    print("checksum failed on thread ", n)
                     self._send(1, bytes([ord('0')]).decode('ascii').encode('utf-8'), conn)
                 file_to_send.close()
             else:
                 return False
         elif op_code == 8:
-            print("close control frame received")
+            print("close control frame received on thread ", n)
             self._send(8, data, conn)
             return False
         elif op_code == 9:
-            print("ping received")
+            print("ping received on thread ", n)
             self._send(10, data, conn)
         else:
             return False
@@ -143,7 +146,6 @@ class Server:
 
     def _send(self, op_code, data, conn):
         is_first = True
-        # print(data)
         while len(data) > 0: 
             send_data = b''
             if (len(data) <= 32768):
@@ -167,7 +169,6 @@ class Server:
                 send_data += (bytes([packet_length & 0xFF]))
             packet_data = data[:packet_length]
             send_data += (packet_data) 
-            # print(send_data)
             conn.sendall(send_data)
             data = data[packet_length:]
 
