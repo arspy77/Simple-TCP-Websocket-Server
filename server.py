@@ -2,7 +2,6 @@ import socket
 import threading   
 import hashlib 
 import base64
-import time
 
 class Server:
     def __init__(self):
@@ -41,7 +40,6 @@ class Server:
                 print("connection closed on thread ", n)
                 conn.close()
                 return
-
 
     def _reply_handshake(self, data):
         string_data = data.decode('ascii')
@@ -121,7 +119,6 @@ class Server:
                     ans += data[0]
             if is_fin:
                 break
-
         return op_code, ans
 
     def _receive_payload_control(self, conn, op_code, mask, payload_length, n):
@@ -214,12 +211,10 @@ class Server:
         print("close control frame sent on thread ", n)
         self._send(8, bytes([ord('1')]), conn)
 
-
-if __name__ == '__main__':
-    global zip_contents
-    global md5_hash
-    file_to_send = open('Jarkom2_KomiCantNetwork.zip', "rb") 
-    zip_contents = file_to_send.read()
-    file_to_send.close()
-    md5_hash =  hashlib.md5(zip_contents).hexdigest().lower()
-    server = Server()
+global zip_contents
+global md5_hash
+file_to_send = open('Jarkom2_KomiCantNetwork.zip', "rb") 
+zip_contents = file_to_send.read()
+file_to_send.close()
+md5_hash =  hashlib.md5(zip_contents).hexdigest().lower()
+server = Server()
