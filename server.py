@@ -31,7 +31,7 @@ class Server:
         while True:
             succ, data = self._receive_payload(conn)
             if not succ:
-                print("connection closed on thread ", n)
+                print("connection closed not normally on thread ", n)
                 conn.close()
                 return 
             succ = self._reply_payload(succ, data, conn, n)
@@ -112,27 +112,24 @@ class Server:
         return op_code, ans
 
     def _reply_payload(self, op_code, data, conn, n):
+        global zip_contents
         if op_code == 1:
             if len(data) >= 6 and data[0:6] == '!echo '.encode():
                 print(data.decode('ascii'), "on thread ", n)
                 self._send(1, data[6:].decode('ascii').encode('utf-8'), conn)
             elif len(data) == 11 and data == '!submission'.encode():
                 print('submission on thread ', n)
-                file_to_send = open('Jarkom2_KomiCantNetwork.zip', "rb") 
-                self._send(2, file_to_send.read(), conn)
-                file_to_send.close()
-            elif len(data) >= 7 and data[0:7] == '!check '.encode():
-                print(data.decode('ascii'), "on thread ", n)
-                file_to_send = open('Jarkom2_KomiCantNetwork.zip', "rb") 
-                if data[7:].decode('ascii').lower() == hashlib.md5(file_to_send.read()).hexdigest().lower(): 
-                    print("checksum succeeded on thread ", n)
-                    self._send(1, bytes([ord('1')]).decode('ascii').encode('utf-8'), conn)
-                else:
-                    print("checksum failed on thread ", n)
-                    self._send(1, bytes([ord('0')]).decode('ascii').encode('utf-8'), conn)
-                file_to_send.close()
+                self._send(2, zip_contents, conn)
             else:
-                return False
+                print("unknown text payload on thread", n)
+        elif op_code == 2:
+            print("binary payload on thread", n)
+            if hashlib.md5(data).hexdigest().lower() == hashlib.md5(zip_contents).hexdigest().lower(): 
+                print("md5 checksum succeeded on thread ", n)
+                self._send(1, bytes([ord('1')]).decode('ascii').encode('utf-8'), conn)
+            else:
+                print("md5 checksum failed on thread ", n)
+                self._send(1, bytes([ord('0')]).decode('ascii').encode('utf-8'), conn)
         elif op_code == 8:
             print("close control frame received on thread ", n)
             self._send(8, data, conn)
@@ -141,7 +138,7 @@ class Server:
             print("ping received on thread ", n)
             self._send(10, data, conn)
         else:
-            return False
+            print("unknown frame on thread ", n)
         return True
 
     def _send(self, op_code, data, conn):
@@ -173,4 +170,9 @@ class Server:
             data = data[packet_length:]
 
 
-server = Server()
+if __name__ == '__main__':
+    global zip_contents
+    file_to_send = open('Jarkom2_KomiCantNetwork.zip', "rb") 
+    zip_contents = file_to_send.read()
+    file_to_send.close()
+    server = Server()
