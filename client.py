@@ -8,12 +8,12 @@ import time
 import hashlib
 
 async def hello():
-    uri = "ws://5ec77580.ngrok.io"
-    uri ="ws://localhost:12000"
+    uri = "ws://f3439234.ngrok.io"
+    uri = "ws://localhost:12000"
     async with websockets.connect(uri) as websocket:
         # name = input("What's your name? ")
 
-        await websocket.send("!echo hithere")
+        await websocket.send("!echo ABCabc")
         # print(f"> {name}")
 
         greeting = await websocket.recv()
@@ -24,6 +24,9 @@ async def hello():
         # print(f"> {name}")
 
         greeting = await websocket.recv()
+        fileA = open("teste.zip",'wb')
+        fileA.write(greeting)
+        fileA.close()
         time.sleep(5)
         
         

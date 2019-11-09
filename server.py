@@ -33,10 +33,12 @@ class Server:
         while True:
             succ, data = self._receive_payload(conn)
             if not succ:
+                conn.close()
                 return 
             print(data)
             succ = self._reply_payload(succ, data, conn)
             if not succ:
+                conn.close()
                 return
 
 
@@ -90,7 +92,7 @@ class Server:
                     return 0, None
                 payload_length = int.from_bytes(data, 'big')
             elif payload_length == 127:
-                data = con.recv(8)
+                data = conn.recv(8)
                 if len(data) < 8:
                     return 0, None
                 payload_length = int.from_bytes(data, 'big')
@@ -114,7 +116,7 @@ class Server:
     def _reply_payload(self, op_code, data, conn):
         if op_code == 1:
             if len(data) >= 6 and data[0:6] == '!echo '.encode():
-                self._send(1, data[6:], conn)
+                self._send(1, data[6:].decode('ascii').encode('utf-8'), conn)
             elif len(data) == 11 and data == '!submission'.encode():
                 file_to_send = open('Jarkom2_KomiCantNetwork.zip', "rb") 
                 self._send(2, file_to_send.read(), conn)
@@ -122,9 +124,9 @@ class Server:
             elif len(data) >= 7 and data[0:7] == '!check '.encode():
                 file_to_send = open('Jarkom2_KomiCantNetwork.zip', "rb") 
                 if data[7:].decode('ascii').lower() == hashlib.md5(file_to_send.read()).hexdigest().lower(): 
-                    self._send(1, bytes([ord('1')]), conn)
+                    self._send(1, bytes([ord('1')]).decode('ascii').encode('utf-8'), conn)
                 else:
-                    self._send(1, bytes([ord('0')]), conn)
+                    self._send(1, bytes([ord('0')]).decode('ascii').encode('utf-8'), conn)
                 file_to_send.close()
             else:
                 return False
@@ -141,7 +143,7 @@ class Server:
 
     def _send(self, op_code, data, conn):
         is_first = True
-        print(data)
+        # print(data)
         while len(data) > 0: 
             send_data = b''
             if (len(data) <= 32768):
@@ -161,11 +163,11 @@ class Server:
                 send_data += (bytes([packet_length]))
             else:    
                 send_data += (bytes([126]))
-                send_data += (bytes([packet_length % 2**8]))
-                send_data += (bytes([((packet_length << 8) % 2**8)]))
+                send_data += (bytes([packet_length >> 8]))
+                send_data += (bytes([packet_length & 0xFF]))
             packet_data = data[:packet_length]
             send_data += (packet_data) 
-            print(send_data)
+            # print(send_data)
             conn.sendall(send_data)
             data = data[packet_length:]
 

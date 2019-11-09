@@ -6,7 +6,7 @@
 ## Petunjuk Penggunaan Program 
 1. Untuk menjalankan server pada localhost ketik '''python server.py''' pada commandline
 2. Gunakan '''ngrok http 12000''' untuk dapat membuat endpoint websocket menjadi public
-3. CLient yang akan dijalankan harus menggunakan websocket dan URL websocket nya adalah yang diberi oleh ngrok (misal di ngrok http://e156f178.ngrok.io, maka URL websocketnya adalah ws://e156f178.ngrok.io)
+3. Client yang akan dijalankan harus menggunakan websocket dan URL websocket nya adalah yang diberi oleh ngrok (misal di ngrok http://e156f178.ngrok.io, maka URL websocketnya adalah ws://e156f178.ngrok.io)
 4. Ada 3 perintah yang bisa dikirimkan client:
     a. '''!echo <string>''' untuk mengirimkan string kembali ke client 
     b.'''!submission''' untuk mengirimkan file server.py dan README.md yang sudah di zip menjadi 1 file
